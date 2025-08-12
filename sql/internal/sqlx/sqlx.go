@@ -108,6 +108,7 @@ type FKAttrScanner struct {
 // TypedSchemaFKs is a version of SchemaFKs that allows to specify the type of
 // used to scan update and delete actions from the database.
 func TypedSchemaFKs[T ScanStringer](s *schema.Schema, rows *sql.Rows, attr ...*FKAttrScanner) error {
+	defer rows.Close()
 	for rows.Next() {
 		var (
 			updateAction, deleteAction                                   = V(new(T)), V(new(T))
@@ -182,7 +183,7 @@ func TypedSchemaFKs[T ScanStringer](s *schema.Schema, rows *sql.Rows, attr ...*F
 			}
 		}
 	}
-	return nil
+	return rows.Err()
 }
 
 // LinkSchemaTables links foreign-key stub tables/columns to actual elements.
@@ -583,6 +584,9 @@ func (b *Builder) lastByte() byte {
 		return 0
 	}
 	buf := b.Buffer.Bytes()
+	if len(buf) == 0 {
+		return 0
+	}
 	return buf[len(buf)-1]
 }
 
@@ -591,23 +595,34 @@ func (b *Builder) rewriteLastByte(c byte) {
 		return
 	}
 	buf := b.Buffer.Bytes()
+	if len(buf) == 0 {
+		return
+	}
 	buf[len(buf)-1] = c
 }
 
 // IsQuoted reports if the given string is quoted with one of the given quotes (e.g. ', ", `).
 func IsQuoted(s string, q ...byte) bool {
-	last := len(s) - 1
-	if last < 1 {
+	if len(s) < 2 {
 		return false
 	}
+	last := len(s) - 1
 Top:
 	for _, quote := range q {
 		if s[0] != quote || s[last] != quote {
 			continue
 		}
-		for i := 1; i < last-1; i++ {
+		for i := 1; i < last; i++ {
+			if i >= len(s)-1 {
+				break
+			}
 			switch c := s[i]; {
-			case c == '\\', c == quote && s[i+1] == quote:
+			case c == '\\':
+				i++
+				if i >= len(s)-1 {
+					break
+				}
+			case c == quote && i+1 < len(s) && s[i+1] == quote:
 				i++
 			// Accept only escaped quotes and reject otherwise.
 			case c == quote:
@@ -683,6 +698,9 @@ func ExprLastIndex(expr string) int {
 				switch expr[j] {
 				case '\\':
 					j++
+					if j >= len(expr) {
+						return -1 // Incomplete escape sequence
+					}
 				case expr[i]:
 					i = j
 					break Top
@@ -692,7 +710,7 @@ func ExprLastIndex(expr string) int {
 			return -1
 		}
 		// Balanced parens and we reached EOS or a terminator.
-		if l == r && (i == len(expr)-1 || expr[i+1] == ',') {
+		if l == r && (i == len(expr)-1 || (i+1 < len(expr) && expr[i+1] == ',')) {
 			return i
 		} else if r > l {
 			return -1

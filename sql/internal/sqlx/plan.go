@@ -344,9 +344,11 @@ func CheckChangesScope(opts migrate.PlanOptions, changes []schema.Change) error 
 			names[t.Schema.Name] = struct{}{}
 		}
 		for _, c := range t.Columns {
-			e, ok := c.Type.Type.(*schema.EnumType)
-			if ok && e.Schema != nil && e.Schema.Name != "" {
-				names[t.Schema.Name] = struct{}{}
+			if c.Type != nil && c.Type.Type != nil {
+				e, ok := c.Type.Type.(*schema.EnumType)
+				if ok && e.Schema != nil && e.Schema.Name != "" {
+					names[e.Schema.Name] = struct{}{}
+				}
 			}
 		}
 	}
