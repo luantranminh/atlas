@@ -106,7 +106,19 @@ type FKAttrScanner struct {
 }
 
 // TypedSchemaFKs is a version of SchemaFKs that allows to specify the type of
-// used to scan update and delete actions from the database.
+// TypedSchemaFKs scans foreign-key rows from rows and populates the given schema s.
+//
+// It expects rows to contain columns in the order: constraint name, table, column,
+// table schema, referenced table, referenced column, referenced schema, update action,
+// delete action, followed optionally by extra attribute columns provided by a single
+// FKAttrScanner. The generic type T must implement ScanStringer and is used to scan
+// the update/delete action values.
+//
+// The function appends or updates schema.ForeignKey entries on the corresponding
+// tables and columns in s, creating lightweight referenced table/column stubs for
+// external-schema references. It closes rows before returning. Returns an error when
+// scanning fails or when a referenced table/column required to resolve a foreign key
+// is missing; any iteration/scan error from rows is propagated via the final return.
 func TypedSchemaFKs[T ScanStringer](s *schema.Schema, rows *sql.Rows, attr ...*FKAttrScanner) error {
 	defer rows.Close()
 	for rows.Next() {
@@ -601,7 +613,17 @@ func (b *Builder) rewriteLastByte(c byte) {
 	buf[len(buf)-1] = c
 }
 
-// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. ', ", `).
+// IsQuoted reports whether s is wrapped by one of the provided quote bytes
+// (for example: '\'', '"' or '`') and contains a valid quoted sequence.
+// It returns false for strings shorter than two characters or when the
+// leading and trailing bytes do not match any supplied quote.
+//
+// Inside the quotes, the function accepts two escape forms:
+//  - backslash escapes (a backslash followed by any character), and
+//  - doubled quotes (two consecutive quote bytes) to represent an escaped quote.
+// Any unescaped occurrence of the quote byte inside the string causes IsQuoted
+// to return false. Incomplete escape sequences (a trailing backslash) are also
+// treated as invalid.
 func IsQuoted(s string, q ...byte) bool {
 	if len(s) < 2 {
 		return false
@@ -682,7 +704,16 @@ func balanced(expr string) bool {
 }
 
 // ExprLastIndex scans the first expression in the given string until
-// its end and returns its last index.
+// ExprLastIndex returns the index of the last rune that belongs to the first
+// syntactic expression in expr. The function scans expr from the start and
+// recognizes balanced parentheses and quoted string/identifier literals
+// (single-quote, double-quote, backtick) with support for backslash escapes.
+//
+// If the first expression is terminated by the end of the input or by a comma
+// immediately following it, the index of the expression's last byte is
+// returned. If the input contains an incomplete escape sequence, unbalanced
+// parentheses, or otherwise cannot form a complete first expression, the
+// function returns -1.
 func ExprLastIndex(expr string) int {
 	var l, r int
 	for i := 0; i < len(expr); i++ {

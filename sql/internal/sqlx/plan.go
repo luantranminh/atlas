@@ -311,7 +311,19 @@ func isDropped(changes []schema.Change, t *schema.Table) bool {
 }
 
 // CheckChangesScope checks that changes can be applied
-// on a schema scope (connection).
+// CheckChangesScope validates that the provided schema changes are confined to a single schema
+// according to the given plan options.
+//
+// It returns an error when:
+// - an AddSchema or DropSchema change is present (those are disallowed for a single-schema plan), or
+// - a ModifySchema change appears but the plan mode is not InPlace, or the ModifySchema target does not
+//   match the plan's SchemaQualifier, or
+// - the set of affected schema names (determined from table schemas and any referenced enum types)
+//   contains more than one entry.
+//
+// The function inspects AddTable, ModifyTable and DropTable changes (and the table columns' types).
+// If a column uses an EnumType, the enum's own schema name (when non-empty) is included in the set of
+// affected schemas. On success it returns nil; otherwise it returns a descriptive error.
 func CheckChangesScope(opts migrate.PlanOptions, changes []schema.Change) error {
 	names := make(map[string]struct{})
 	for _, c := range changes {
