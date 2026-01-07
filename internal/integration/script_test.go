@@ -108,7 +108,7 @@ func (c *ciT) Verbose() bool    { return testing.Verbose() }
 func (c *ciT) Log(args ...any)  { c.T.Log(args...) }
 
 func (c *ciT) Fatal(args ...any) {
-	c.T.Log("::error::" + fmt.Sprint(args...))
+	c.T.Log("" + fmt.Sprint(args...))
 	c.T.FailNow()
 }
 
