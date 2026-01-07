@@ -101,11 +101,11 @@ type ciT struct {
 	*testing.T
 }
 
-func (c *ciT) Skip(args ...any)  { c.T.Skip(args...) }
-func (c *ciT) Parallel()         { c.T.Parallel() }
-func (c *ciT) FailNow()          { c.T.FailNow() }
-func (c *ciT) Verbose() bool     { return testing.Verbose() }
-func (c *ciT) Log(args ...any)   { c.T.Log(args...) }
+func (c *ciT) Skip(args ...any) { c.T.Skip(args...) }
+func (c *ciT) Parallel()        { c.T.Parallel() }
+func (c *ciT) FailNow()         { c.T.FailNow() }
+func (c *ciT) Verbose() bool    { return testing.Verbose() }
+func (c *ciT) Log(args ...any)  { c.T.Log(args...) }
 
 func (c *ciT) Fatal(args ...any) {
 	c.T.Log("::error::" + fmt.Sprint(args...))
