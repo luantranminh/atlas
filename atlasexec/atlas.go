@@ -405,6 +405,7 @@ func (s *stream) Current() (string, error) {
 }
 
 // Err returns the error, if any, that occurred while reading the stream.
+// test
 func (s *stream) Err() error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()

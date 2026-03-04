@@ -34,6 +34,7 @@ jobs:
       - uses: ariga/setup-atlas@v0
         with:
           cloud-token: ${{ secrets.ATLAS_TOKEN }}
+          version: "v1.1.6-d568a34-canary"
         env:
           ATLAS_DEBUG: "true"
       - name: Run tests
